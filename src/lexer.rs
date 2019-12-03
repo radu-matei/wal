@@ -1,5 +1,6 @@
 use crate::token::Token;
 
+#[derive(Debug)]
 pub struct Lexer<'a> {
     input: &'a str,
     position: usize,
@@ -281,8 +282,6 @@ if (5 < 10) {
 
     for t in tests.iter() {
         let tok = l.next_token().unwrap();
-        println!("{:?} at pos {}", tok, l.position);
-
         assert_eq!(
             *t, tok,
             "expected {:?} token but got {:?} at character '{}' and position {}",
