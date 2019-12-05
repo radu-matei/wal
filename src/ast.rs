@@ -1,4 +1,3 @@
-use crate::token::Token;
 use std::fmt;
 
 pub enum Node {
@@ -40,6 +39,7 @@ impl fmt::Display for Program {
 pub enum Statement {
     Let(LetStatement),
     Return(ReturnStatement),
+    Expression(Expression),
 }
 impl fmt::Display for Statement {
     fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
