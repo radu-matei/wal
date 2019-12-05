@@ -1,3 +1,4 @@
+use crate::token;
 use std::fmt;
 
 pub enum Node {
@@ -70,15 +71,43 @@ impl fmt::Display for ReturnStatement {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Expression {
     Identifier(String),
     Integer(i64),
     Boolean(bool),
     String(String),
+    Prefix(PrefixExpression),
+    Infix(InfixExpression),
 }
+
 impl fmt::Display for Expression {
     fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
         Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PrefixExpression {
+    pub operator: token::Token,
+    pub right: Box<Expression>,
+}
+
+impl fmt::Display for PrefixExpression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({:?}{:?})", self.operator, self.right)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InfixExpression {
+    pub left: Box<Expression>,
+    pub operator: token::Token,
+    pub right: Box<Expression>,
+}
+
+impl fmt::Display for InfixExpression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({:?}{:?}{:?})", self.left, self.operator, self.right)
     }
 }

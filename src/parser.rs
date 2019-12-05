@@ -1,5 +1,8 @@
 use crate::{
-    ast::{Expression, LetStatement, Program, ReturnStatement, Statement},
+    ast::{
+        Expression, InfixExpression, LetStatement, PrefixExpression, Program, ReturnStatement,
+        Statement,
+    },
     lexer::{Lexer, LexerError},
     token::Token,
 };
@@ -56,7 +59,8 @@ impl<'a> Parser<'a> {
 
         let prec_val = pr as u32;
         while self.peek != Token::SEMICOLON && prec_val < (precedence(&self.peek) as u32) {
-            match self.infix_parse(&left) {
+            // TODO: fix the clone call
+            match self.infix_parse(left.clone()) {
                 Some(infix) => left = infix?,
                 None => {
                     return Ok(left);
@@ -65,6 +69,30 @@ impl<'a> Parser<'a> {
         }
 
         Ok(left)
+    }
+
+    fn parse_prefix_expression(&mut self) -> Result<Expression, ParserError> {
+        let op = self.current.clone();
+        self.next_token()?;
+        let exp = self.parse_expression(Precedence::Prefix)?;
+        Ok(Expression::Prefix(PrefixExpression {
+            operator: op,
+            right: Box::new(exp),
+        }))
+    }
+
+    fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression, ParserError> {
+        self.next_token()?;
+        let op = self.current.clone();
+        let prec = precedence(&self.current);
+        self.next_token()?;
+
+        let right = Box::new(self.parse_expression(prec)?);
+        Ok(Expression::Infix(InfixExpression {
+            left: Box::new(left),
+            operator: op,
+            right: right,
+        }))
     }
 
     fn parse_let_statement(&mut self) -> Result<Statement, ParserError> {
@@ -135,23 +163,28 @@ impl<'a> Parser<'a> {
         match &self.current {
             Token::IDENTIFIER(_) => Ok(Expression::Identifier(self.parse_identifier()?)),
             Token::INTEGER(i) => Ok(Expression::Integer(*i)),
-            _ => Err(ParserError::InvalidNextToken(String::from(""))),
+            Token::TRUE => Ok(Expression::Boolean(true)),
+            Token::FALSE => Ok(Expression::Boolean(false)),
+            Token::BANG | Token::MINUS => self.parse_prefix_expression(),
+            _ => Err(ParserError::InvalidNextToken(String::from(format!(
+                "{:?}",
+                self.current
+            )))),
         }
     }
 
-    fn infix_parse(&mut self, left: &Expression) -> Option<Result<Expression, ParserError>> {
+    fn infix_parse(&mut self, left: Expression) -> Option<Result<Expression, ParserError>> {
         match self.peek {
-            // Token::Plus
-            // | Token::Minus
-            // | Token::Asterisk
-            // | Token::Slash
-            // | Token::Percent
-            // | Token::Equal
-            // | Token::NotEqual
-            // | Token::LessThan
-            // | Token::GreaterThan => Some(self.parse_infix_expression(left)),
-            // Token::LeftParen => Some(self.parse_call_expression(left)),
-            // Token::LeftBracket => Some(self.parse_index_expression(left)),
+            Token::PLUS
+            | Token::MINUS
+            | Token::ASTERISK
+            | Token::SLASH
+            | Token::EQ
+            | Token::NE
+            | Token::LT
+            | Token::GT => Some(self.parse_infix_expression(left)),
+            // Token::LPAREN => Some(self.parse_call_expression(left)),
+            // Token::LBRACKET => Some(self.parse_index_expression(left)),
             _ => None,
         }
     }
@@ -302,4 +335,145 @@ foobar;
         Statement::Expression(Expression::Identifier(t)) => assert_eq!(t, "foobar"),
         _ => panic!("expected identifier expression, got {:?}", exp),
     }
+}
+
+#[test]
+fn test_prefix_expression() {
+    let input = r#"
+!5;
+-15;
+!true;
+!false;
+-x;
+"#;
+
+    let exp = vec![
+        PrefixExpression {
+            operator: Token::BANG,
+            right: Box::new(Expression::Integer(5)),
+        },
+        PrefixExpression {
+            operator: Token::MINUS,
+            right: Box::new(Expression::Integer(15)),
+        },
+        PrefixExpression {
+            operator: Token::BANG,
+            right: Box::new(Expression::Boolean(true)),
+        },
+        PrefixExpression {
+            operator: Token::BANG,
+            right: Box::new(Expression::Boolean(false)),
+        },
+        PrefixExpression {
+            operator: Token::MINUS,
+            right: Box::new(Expression::Identifier(String::from("x"))),
+        },
+    ];
+
+    let l = Lexer::new(input).unwrap();
+    let mut p = Parser::new(l).unwrap();
+    let pr = p.parse().unwrap();
+
+    for i in 0..pr.statements.len() {
+        assert_eq!(
+            is_expected_prefix_expression(
+                pr.statements.iter().nth(i).unwrap(),
+                exp.iter().nth(i).unwrap()
+            ),
+            true
+        );
+    }
+}
+
+#[cfg(test)]
+fn is_expected_prefix_expression(s: &Statement, exp: &PrefixExpression) -> bool {
+    match s {
+        Statement::Expression(Expression::Prefix(es)) => {
+            println!("expected {:?} to equal {:?}", es, exp);
+            return es.operator == exp.operator && es.right == exp.right;
+        }
+        _ => return false,
+    };
+}
+
+#[test]
+fn test_infix_expression() {
+    let input = r#"
+5+5;
+5-5;
+5*5;
+5/5;
+5>5;
+5<5;
+5==5;
+5!=5;
+"#;
+
+    let exp = vec![
+        InfixExpression {
+            left: Box::new(Expression::Integer(5)),
+            operator: Token::PLUS,
+            right: Box::new(Expression::Integer(5)),
+        },
+        InfixExpression {
+            left: Box::new(Expression::Integer(5)),
+            operator: Token::MINUS,
+            right: Box::new(Expression::Integer(5)),
+        },
+        InfixExpression {
+            left: Box::new(Expression::Integer(5)),
+            operator: Token::ASTERISK,
+            right: Box::new(Expression::Integer(5)),
+        },
+        InfixExpression {
+            left: Box::new(Expression::Integer(5)),
+            operator: Token::SLASH,
+            right: Box::new(Expression::Integer(5)),
+        },
+        InfixExpression {
+            left: Box::new(Expression::Integer(5)),
+            operator: Token::GT,
+            right: Box::new(Expression::Integer(5)),
+        },
+        InfixExpression {
+            left: Box::new(Expression::Integer(5)),
+            operator: Token::LT,
+            right: Box::new(Expression::Integer(5)),
+        },
+        InfixExpression {
+            left: Box::new(Expression::Integer(5)),
+            operator: Token::EQ,
+            right: Box::new(Expression::Integer(5)),
+        },
+        InfixExpression {
+            left: Box::new(Expression::Integer(5)),
+            operator: Token::NE,
+            right: Box::new(Expression::Integer(5)),
+        },
+    ];
+
+    let l = Lexer::new(input).unwrap();
+    let mut p = Parser::new(l).unwrap();
+    let pr = p.parse().unwrap();
+
+    for i in 0..pr.statements.len() {
+        assert_eq!(
+            is_expected_infix_expression(
+                pr.statements.iter().nth(i).unwrap(),
+                exp.iter().nth(i).unwrap()
+            ),
+            true
+        );
+    }
+}
+
+#[cfg(test)]
+fn is_expected_infix_expression(s: &Statement, exp: &InfixExpression) -> bool {
+    match s {
+        Statement::Expression(Expression::Infix(ie)) => {
+            println!("expected {:?} to equal {:?}", ie, exp);
+            return ie.right == exp.right && ie.operator == exp.operator && ie.right == exp.right;
+        }
+        _ => return false,
+    };
 }
