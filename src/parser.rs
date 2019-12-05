@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expression, LetStatement, Program, Statement},
+    ast::{Expression, LetStatement, Program, ReturnStatement, Statement},
     lexer::{Lexer, LexerError},
     token::Token,
 };
@@ -37,6 +37,7 @@ impl<'a> Parser<'a> {
     fn parse_statement(&mut self) -> Result<Statement, ParserError> {
         match &self.current {
             Token::LET => return self.parse_let_statement(),
+            Token::RETURN => return self.parse_return_statement(),
             x => {
                 return Err(ParserError::UnknownStatement(String::from(format!(
                     "unknown statement: {:?}",
@@ -61,10 +62,20 @@ impl<'a> Parser<'a> {
             self.next_token()?;
         }
         Ok(Statement::Let(LetStatement {
-            token: Token::LET,
             name: n,
             value: val,
         }))
+    }
+
+    fn parse_return_statement(&mut self) -> Result<Statement, ParserError> {
+        self.next_token()?;
+        let val = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek == Token::SEMICOLON {
+            self.next_token()?;
+        }
+
+        Ok(Statement::Return(ReturnStatement { value: val }))
     }
 
     fn parse_identifier_name(&mut self) -> Result<String, ParserError> {
@@ -161,17 +172,14 @@ let foobar = 1234;
     let st = vec![
         LetStatement {
             name: String::from("five"),
-            token: Token::LET,
             value: Expression::Boolean(true),
         },
         LetStatement {
             name: String::from("ten"),
-            token: Token::LET,
             value: Expression::Boolean(true),
         },
         LetStatement {
             name: String::from("foobar"),
-            token: Token::LET,
             value: Expression::Boolean(true),
         },
     ];
@@ -196,6 +204,52 @@ let foobar = 1234;
 fn is_expected_let_ident(s: &Statement, exp: &LetStatement) -> bool {
     match s {
         Statement::Let(ls) => return ls.name == exp.name && ls.value == exp.value,
+        _ => return false,
+    };
+}
+
+#[test]
+fn test_return_statement() {
+    let input = r#"
+return 3;
+return x;
+"#;
+
+    let st = vec![
+        ReturnStatement {
+            value: Expression::Boolean(true),
+        },
+        ReturnStatement {
+            value: Expression::Boolean(true),
+        },
+    ];
+
+    let l = Lexer::new(input).unwrap();
+    let mut p = Parser::new(l).unwrap();
+    let pr = p.parse().unwrap();
+
+    assert_eq!(pr.statements.len(), 2);
+    for i in 0..pr.statements.len() {
+        // assert_eq!(
+        //     is_expected_return(
+        //         pr.statements.iter().nth(i).unwrap(),
+        //         st.iter().nth(i).unwrap()
+        //     ),
+        //     true
+        // );
+
+        is_expected_return(
+            pr.statements.iter().nth(i).unwrap(),
+            st.iter().nth(i).unwrap(),
+        );
+    }
+}
+
+#[cfg(test)]
+fn is_expected_return(s: &Statement, exp: &ReturnStatement) -> bool {
+    println!("expected to compare {} with {}", s, exp);
+    match s {
+        Statement::Let(ls) => return ls.value == exp.value,
         _ => return false,
     };
 }

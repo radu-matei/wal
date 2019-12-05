@@ -39,6 +39,7 @@ impl fmt::Display for Program {
 #[derive(Debug)]
 pub enum Statement {
     Let(LetStatement),
+    Return(ReturnStatement),
 }
 impl fmt::Display for Statement {
     fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
@@ -50,12 +51,22 @@ impl fmt::Display for Statement {
 pub struct LetStatement {
     pub name: String,
     pub value: Expression,
-    pub token: Token,
 }
 
 impl fmt::Display for LetStatement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "let {} = {};", self.name, self.value)
+    }
+}
+
+#[derive(Debug)]
+pub struct ReturnStatement {
+    pub value: Expression,
+}
+
+impl fmt::Display for ReturnStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "return {};", self.value)
     }
 }
 
