@@ -130,7 +130,6 @@ pub enum Precedence {
     Index,
 }
 
-// Determines the Precedence value of a given Token.
 fn precedence(tok: &Token) -> Precedence {
     match tok {
         Token::EQ => Precedence::Equals,
@@ -230,17 +229,12 @@ return x;
 
     assert_eq!(pr.statements.len(), 2);
     for i in 0..pr.statements.len() {
-        // assert_eq!(
-        //     is_expected_return(
-        //         pr.statements.iter().nth(i).unwrap(),
-        //         st.iter().nth(i).unwrap()
-        //     ),
-        //     true
-        // );
-
-        is_expected_return(
-            pr.statements.iter().nth(i).unwrap(),
-            st.iter().nth(i).unwrap(),
+        assert_eq!(
+            is_expected_return(
+                pr.statements.iter().nth(i).unwrap(),
+                st.iter().nth(i).unwrap()
+            ),
+            true
         );
     }
 }
@@ -249,7 +243,7 @@ return x;
 fn is_expected_return(s: &Statement, exp: &ReturnStatement) -> bool {
     println!("expected to compare {} with {}", s, exp);
     match s {
-        Statement::Let(ls) => return ls.value == exp.value,
+        Statement::Return(ls) => return ls.value == exp.value,
         _ => return false,
     };
 }
