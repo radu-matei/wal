@@ -42,9 +42,14 @@ pub enum Statement {
     Return(ReturnStatement),
     Expression(Expression),
 }
+
 impl fmt::Display for Statement {
-    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
-        Ok(())
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Statement::Expression(stmt) => stmt.fmt(f),
+            Statement::Let(stmt) => stmt.fmt(f),
+            Statement::Return(stmt) => stmt.fmt(f),
+        }
     }
 }
 
@@ -82,8 +87,15 @@ pub enum Expression {
 }
 
 impl fmt::Display for Expression {
-    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
-        Ok(())
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Expression::Identifier(id) => id.fmt(f),
+            Expression::Integer(int) => int.fmt(f),
+            Expression::Boolean(b) => b.fmt(f),
+            Expression::Prefix(p) => p.fmt(f),
+            Expression::String(s) => write!(f, r#""{}""#, s),
+            Expression::Infix(i) => i.fmt(f),
+        }
     }
 }
 
@@ -95,7 +107,7 @@ pub struct PrefixExpression {
 
 impl fmt::Display for PrefixExpression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({:?}{:?})", self.operator, self.right)
+        write!(f, "({}{})", self.operator, self.right)
     }
 }
 
@@ -108,6 +120,6 @@ pub struct InfixExpression {
 
 impl fmt::Display for InfixExpression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({:?}{:?}{:?})", self.left, self.operator, self.right)
+        write!(f, "({} {} {})", self.left, self.operator, self.right)
     }
 }
