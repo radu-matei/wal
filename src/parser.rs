@@ -95,6 +95,20 @@ impl<'a> Parser<'a> {
         }))
     }
 
+    fn parse_groupped_expression(&mut self) -> Result<Expression, ParserError> {
+        self.next_token()?;
+        let exp = self.parse_expression(Precedence::Lowest)?;
+        if !self.expect_peek(&Token::RPAREN)? {
+            return Err(ParserError::InvalidNextToken(String::from(format!(
+                "expected next token to be {}, got {}",
+                Token::RPAREN,
+                self.current
+            ))));
+        }
+
+        return Ok(exp);
+    }
+
     fn parse_let_statement(&mut self) -> Result<Statement, ParserError> {
         self.next_token()?;
 
@@ -165,6 +179,7 @@ impl<'a> Parser<'a> {
             Token::INTEGER(i) => Ok(Expression::Integer(*i)),
             Token::TRUE => Ok(Expression::Boolean(true)),
             Token::FALSE => Ok(Expression::Boolean(false)),
+            Token::LPAREN => self.parse_groupped_expression(),
             Token::BANG | Token::MINUS => self.parse_prefix_expression(),
             _ => Err(ParserError::InvalidNextToken(String::from(format!(
                 "{:?}",
@@ -500,11 +515,11 @@ fn test_operator_precedence() {
         ("false", "false"),
         ("3 > 5 == false", "((3 > 5) == false)"),
         ("3 < 5 == true", "((3 < 5) == true)"),
-        // ("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"),
-        // ("(5 + 5) * 2", "((5 + 5) * 2)"),
-        // ("2 / (5 + 5)", "(2 / (5 + 5))"),
-        // ("-(5 + 5)", "(-(5 + 5))"),
-        // ("!(true == true)", "(!(true == true))"),
+        ("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"),
+        ("(5 + 5) * 2", "((5 + 5) * 2)"),
+        ("2 / (5 + 5)", "(2 / (5 + 5))"),
+        ("-(5 + 5)", "(-(5 + 5))"),
+        ("!(true == true)", "(!(true == true))"),
         // (
         //     "a * [1, 2, 3, 4][b * c] * d",
         //     "((a * ([1, 2, 3, 4][(b * c)])) * d)",
