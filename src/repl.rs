@@ -1,4 +1,4 @@
-use crate::{lexer, parser, token};
+use crate::{eval, lexer, parser, token};
 use std::io::{stdin, stdout, Write};
 
 const PROMPT: &str = ">>";
@@ -14,7 +14,10 @@ pub fn start() {
         let mut p = parser::Parser::new(l).unwrap();
 
         match p.parse() {
-            Ok(pr) => println!("{}", pr),
+            Ok(pr) => {
+                println!("{:?}", pr);
+                println!("{}", eval::eval_program(pr).unwrap())
+            }
             Err(err) => println!("{:?}", err),
         }
 

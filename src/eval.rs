@@ -22,7 +22,7 @@ pub fn eval(node: Node) -> Result<Object, EvaluatorError> {
     }
 }
 
-fn eval_program(prog: Program) -> Result<Object, EvaluatorError> {
+pub fn eval_program(prog: Program) -> Result<Object, EvaluatorError> {
     let mut result = Object::Null;
 
     for stmt in prog.statements {
