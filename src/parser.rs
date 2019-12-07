@@ -1,7 +1,7 @@
 use crate::{
     ast::{
-        BlockStatement, Expression, FunctionLiteral, IfExpression, InfixExpression, LetStatement,
-        PrefixExpression, Program, ReturnStatement, Statement,
+        BlockStatement, CallExpression, Expression, FunctionLiteral, IfExpression, InfixExpression,
+        LetStatement, PrefixExpression, Program, ReturnStatement, Statement,
     },
     lexer::{Lexer, LexerError},
     token::Token,
@@ -204,6 +204,47 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
+    fn parse_call_expression(&mut self, left: Expression) -> Result<Expression, ParserError> {
+        self.next_token()?;
+
+        if self.peek == Token::RPAREN {
+            self.next_token()?;
+            return Ok(Expression::Call(CallExpression {
+                function: Box::new(left.clone()),
+                arguments: vec![],
+            }));
+        }
+
+        let args = self.parse_expression_list(Token::RPAREN)?;
+
+        Ok(Expression::Call(CallExpression {
+            function: Box::new(left.clone()),
+            arguments: args,
+        }))
+    }
+
+    fn parse_expression_list(&mut self, end: Token) -> Result<Vec<Expression>, ParserError> {
+        if self.peek == end {
+            self.next_token()?;
+            return Ok(vec![]);
+        }
+
+        let mut exp = vec![];
+
+        self.next_token()?;
+        exp.push(self.parse_expression(Precedence::Lowest)?);
+
+        while self.peek == Token::COMMA {
+            self.next_token()?;
+            self.next_token()?;
+
+            exp.push(self.parse_expression(Precedence::Lowest)?);
+        }
+        self.expect_peek(&end)?;
+
+        Ok(exp)
+    }
+
     fn parse_let_statement(&mut self) -> Result<Statement, ParserError> {
         self.next_token()?;
 
@@ -295,7 +336,7 @@ impl<'a> Parser<'a> {
             | Token::NE
             | Token::LT
             | Token::GT => Some(self.parse_infix_expression(left)),
-            // Token::LPAREN => Some(self.parse_call_expression(left)),
+            Token::LPAREN => Some(self.parse_call_expression(left)),
             // Token::LBRACKET => Some(self.parse_index_expression(left)),
             _ => None,
         }
@@ -646,5 +687,25 @@ fn parse_if_expression() {
         let got = format!("{}", p.parse().unwrap());
 
         assert_eq!(input, got);
+    }
+}
+
+#[test]
+fn test_parse_call_expressions() {
+    let tests = vec![
+        ("add(1, 2 * 3, 4 + 5);", "add(1, (2 * 3), (4 + 5))"),
+        ("a + add(b * c) + d", "((a + add((b * c))) + d)"),
+        (
+            "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+            "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+        ),
+    ];
+
+    for (input, want) in tests {
+        let l = Lexer::new(input).unwrap();
+        let mut p = Parser::new(l).unwrap();
+        let got = format!("{}", p.parse().unwrap());
+
+        assert_eq!(want, got);
     }
 }
