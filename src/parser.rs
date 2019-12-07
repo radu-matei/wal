@@ -1,7 +1,7 @@
 use crate::{
     ast::{
-        Expression, InfixExpression, LetStatement, PrefixExpression, Program, ReturnStatement,
-        Statement,
+        BlockStatement, Expression, FunctionLiteral, IfExpression, InfixExpression, LetStatement,
+        PrefixExpression, Program, ReturnStatement, Statement,
     },
     lexer::{Lexer, LexerError},
     token::Token,
@@ -109,6 +109,101 @@ impl<'a> Parser<'a> {
         return Ok(exp);
     }
 
+    fn parse_if_expression(&mut self) -> Result<Expression, ParserError> {
+        self.expect_peek(&Token::LPAREN)?;
+        self.next_token()?;
+
+        let condition = Box::new(self.parse_expression(Precedence::Lowest)?);
+        self.expect_peek(&Token::RPAREN)?;
+        self.expect_peek(&Token::LBRACE)?;
+
+        let consequence = if let Statement::Block(block) = self.parse_block_statement()? {
+            block
+        } else {
+            return Err(ParserError::InvalidNextToken(String::from(format!(
+                "expected {}, got {}",
+                "if block statement", self.current
+            ))));
+        };
+
+        if self.peek != Token::ELSE {
+            return Ok(Expression::If(IfExpression {
+                condition,
+                consequence,
+                alternative: None,
+            }));
+        }
+
+        self.next_token()?;
+        self.expect_peek(&Token::LBRACE)?;
+
+        let alternative = if let Statement::Block(block) = self.parse_block_statement()? {
+            Some(block)
+        } else {
+            return Err(ParserError::InvalidNextToken(String::from(format!(
+                "expected {}, got {}",
+                "if block statement", self.current
+            ))));
+        };
+
+        Ok(Expression::If(IfExpression {
+            condition,
+            consequence,
+            alternative,
+        }))
+    }
+
+    fn parse_block_statement(&mut self) -> Result<Statement, ParserError> {
+        self.next_token()?;
+
+        let mut statements = vec![];
+
+        while self.current != Token::RBRACE && self.current != Token::EOF {
+            statements.push(self.parse_statement()?);
+            self.next_token()?;
+        }
+
+        Ok(Statement::Block(BlockStatement { statements }))
+    }
+
+    fn parse_function_literal(&mut self) -> Result<Expression, ParserError> {
+        self.expect_peek(&Token::LPAREN)?;
+        let parameters = self.parse_function_params()?;
+        self.expect_peek(&Token::LBRACE)?;
+
+        let body = if let Statement::Block(block) = self.parse_block_statement()? {
+            block
+        } else {
+            return Err(ParserError::InvalidNextToken(String::from(format!(
+                "expected {}, got {}",
+                "if block statement", self.current
+            ))));
+        };
+
+        Ok(Expression::Function(FunctionLiteral { parameters, body }))
+    }
+
+    fn parse_function_params(&mut self) -> Result<Vec<String>, ParserError> {
+        let mut params = vec![];
+
+        if self.peek == Token::RPAREN {
+            self.next_token()?;
+            return Ok(params);
+        }
+
+        self.next_token()?;
+        params.push(self.parse_identifier()?);
+
+        while self.peek == Token::COMMA {
+            self.next_token()?;
+            self.next_token()?;
+
+            params.push(self.parse_identifier()?);
+        }
+
+        Ok(params)
+    }
+
     fn parse_let_statement(&mut self) -> Result<Statement, ParserError> {
         self.next_token()?;
 
@@ -180,6 +275,8 @@ impl<'a> Parser<'a> {
             Token::TRUE => Ok(Expression::Boolean(true)),
             Token::FALSE => Ok(Expression::Boolean(false)),
             Token::LPAREN => self.parse_groupped_expression(),
+            Token::IF => self.parse_if_expression(),
+            Token::FUNCTION => self.parse_function_literal(),
             Token::BANG | Token::MINUS => self.parse_prefix_expression(),
             _ => Err(ParserError::InvalidNextToken(String::from(format!(
                 "{:?}",
@@ -536,5 +633,18 @@ fn test_operator_precedence() {
         let got = format!("{}", p.parse().unwrap());
 
         assert_eq!(want, got);
+    }
+}
+
+#[test]
+fn parse_if_expression() {
+    let tests = vec!["if (x < y) { x }", "if (x > y) { x } else { y }"];
+
+    for input in tests {
+        let l = Lexer::new(input).unwrap();
+        let mut p = Parser::new(l).unwrap();
+        let got = format!("{}", p.parse().unwrap());
+
+        assert_eq!(input, got);
     }
 }

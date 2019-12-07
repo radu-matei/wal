@@ -36,11 +36,12 @@ impl fmt::Display for Program {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Statement {
     Let(LetStatement),
     Return(ReturnStatement),
     Expression(Expression),
+    Block(BlockStatement),
 }
 
 impl fmt::Display for Statement {
@@ -49,11 +50,12 @@ impl fmt::Display for Statement {
             Statement::Expression(stmt) => stmt.fmt(f),
             Statement::Let(stmt) => stmt.fmt(f),
             Statement::Return(stmt) => stmt.fmt(f),
+            Statement::Block(stmt) => stmt.fmt(f),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LetStatement {
     pub name: String,
     pub value: Expression,
@@ -65,7 +67,7 @@ impl fmt::Display for LetStatement {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReturnStatement {
     pub value: Expression,
 }
@@ -84,6 +86,8 @@ pub enum Expression {
     String(String),
     Prefix(PrefixExpression),
     Infix(InfixExpression),
+    If(IfExpression),
+    Function(FunctionLiteral),
 }
 
 impl fmt::Display for Expression {
@@ -95,6 +99,8 @@ impl fmt::Display for Expression {
             Expression::Prefix(p) => p.fmt(f),
             Expression::String(s) => write!(f, r#""{}""#, s),
             Expression::Infix(i) => i.fmt(f),
+            Expression::If(i) => i.fmt(f),
+            Expression::Function(func) => func.fmt(f),
         }
     }
 }
@@ -121,5 +127,51 @@ pub struct InfixExpression {
 impl fmt::Display for InfixExpression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({} {} {})", self.left, self.operator, self.right)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BlockStatement {
+    pub statements: Vec<Statement>,
+}
+
+impl fmt::Display for BlockStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for stmt in &self.statements {
+            stmt.fmt(f)?;
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IfExpression {
+    pub condition: Box<Expression>,
+    pub consequence: BlockStatement,
+    pub alternative: Option<BlockStatement>,
+}
+
+impl fmt::Display for IfExpression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "if {} {{ {} }}", self.condition, self.consequence)?;
+
+        if let Some(alt) = &self.alternative {
+            write!(f, " else {{ {} }}", alt)?;
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FunctionLiteral {
+    pub parameters: Vec<String>,
+    pub body: BlockStatement,
+}
+
+impl fmt::Display for FunctionLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "fn({}) {{ {} }}", self.parameters.join(", "), self.body)
     }
 }
