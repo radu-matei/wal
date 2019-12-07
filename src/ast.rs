@@ -1,6 +1,7 @@
 use crate::token;
 use std::fmt;
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum Node {
     Program(Program),
     Statement(Statement),
@@ -17,6 +18,7 @@ impl fmt::Display for Node {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Program {
     pub statements: Vec<Statement>,
 }
