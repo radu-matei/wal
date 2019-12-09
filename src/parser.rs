@@ -315,6 +315,7 @@ impl<'a> Parser<'a> {
             Token::INTEGER(i) => Ok(Expression::Integer(*i)),
             Token::TRUE => Ok(Expression::Boolean(true)),
             Token::FALSE => Ok(Expression::Boolean(false)),
+            Token::STRING(s) => Ok(Expression::String(s.to_string())),
             Token::LPAREN => self.parse_groupped_expression(),
             Token::IF => self.parse_if_expression(),
             Token::FUNCTION => self.parse_function_literal(),

@@ -85,6 +85,7 @@ impl<'a> Lexer<'a> {
             ',' => Token::COMMA,
             '{' => Token::LBRACE,
             '}' => Token::RBRACE,
+            '"' => self.read_string()?,
             '\u{0}' => Token::EOF,
 
             _ => {
@@ -134,6 +135,29 @@ impl<'a> Lexer<'a> {
         Ok(Token::INTEGER(num_str.parse::<i64>()?))
     }
 
+    pub fn read_string(&mut self) -> Result<Token, LexerError> {
+        let pos = self.position + 1;
+
+        loop {
+            self.read_char()?;
+            match self.current_char {
+                '"' => break,
+                '\u{0000}' => {
+                    return Err(LexerError::UnexpectedEOF);
+                }
+                _ => {}
+            }
+        }
+
+        Ok(Token::STRING(
+            self.input
+                .chars()
+                .skip(pos)
+                .take(self.position - pos)
+                .collect(),
+        ))
+    }
+
     pub fn skip_whitespace(&mut self) -> Result<(), LexerError> {
         while self.current_char == ' '
             || self.current_char == '\t'
@@ -173,6 +197,7 @@ pub fn lookup_identifier(s: &str) -> Option<Token> {
 pub enum LexerError {
     ReadIndexOutOfRange(usize),
     ParseIntError(String),
+    UnexpectedEOF,
 }
 
 impl From<std::num::ParseIntError> for LexerError {

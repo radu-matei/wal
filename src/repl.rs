@@ -1,4 +1,4 @@
-use crate::{eval, lexer, parser, token};
+use crate::{eval, lexer, object, parser, token};
 use std::io::{stdin, stdout, Write};
 
 const PROMPT: &str = ">>";
@@ -12,11 +12,15 @@ pub fn start() {
 
         let l = lexer::Lexer::new(buffer).unwrap();
         let mut p = parser::Parser::new(l).unwrap();
+        let mut env = object::Environment::new();
 
         match p.parse() {
             Ok(pr) => {
                 println!("{:?}", pr);
-                println!("{}", eval::eval_program(pr).unwrap())
+                match eval::eval_program(pr, &mut env) {
+                    Ok(obj) => println!("{}", obj),
+                    Err(err) => println!("{:?}", err),
+                };
             }
             Err(err) => println!("{:?}", err),
         }

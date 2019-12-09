@@ -7,6 +7,7 @@ pub enum Token {
 
     IDENTIFIER(String),
     INTEGER(i64),
+    STRING(String),
 
     ASSIGN,
     PLUS,
@@ -38,7 +39,6 @@ pub enum Token {
     RETURN,
 }
 
-
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -47,6 +47,7 @@ impl fmt::Display for Token {
 
             Token::IDENTIFIER(s) => write!(f, "identifier({})", s),
             Token::INTEGER(i) => i.fmt(f),
+            Token::STRING(s) => s.fmt(f),
 
             Token::ASSIGN => write!(f, "="),
             Token::PLUS => write!(f, "+"),
