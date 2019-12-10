@@ -200,6 +200,7 @@ impl<'a> Parser<'a> {
 
             params.push(self.parse_identifier()?);
         }
+        self.expect_peek(&Token::RPAREN)?;
 
         Ok(params)
     }

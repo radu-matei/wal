@@ -1,5 +1,6 @@
+use crate::ast::BlockStatement;
+use std::collections::HashMap;
 use std::fmt;
-use std::collections::{HashMap};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Object {
@@ -7,6 +8,8 @@ pub enum Object {
     Integer(i64),
     String(String),
     Boolean(bool),
+    Function(Function),
+    ReturnValue(Box<Object>),
 }
 
 impl fmt::Display for Object {
@@ -16,10 +19,26 @@ impl fmt::Display for Object {
             Object::Integer(i) => i.fmt(f),
             Object::Boolean(b) => b.fmt(f),
             Object::String(s) => s.fmt(f),
+            Object::Function(func) => func.fmt(f),
+            Object::ReturnValue(r) => write!(f, "return({})", r),
         }
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Function {
+    pub parameters: Vec<String>,
+    pub body: BlockStatement,
+    pub env: Environment,
+}
+
+impl fmt::Display for Function {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let params = self.parameters.join(", ");
+
+        write!(f, "fn({}) {{\n{}\n}}", params, self.body)
+    }
+}
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Environment {
